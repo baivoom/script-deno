@@ -1,0 +1,31 @@
+#!/usr/bin/env deno --allow-all
+
+console.log("");
+console.log(`DENO: ${JSON.stringify(Deno.version)}`);
+
+async function run() {
+    if (Deno.args.length > 0) {
+        try {
+            const args = [
+                "exec",
+                "--no",
+                Deno.args[0],
+                "--",
+                ...Deno.args.slice(1),
+            ];
+            console.log(`mpx: ${["npm", ...args].join(" ")}`);
+            console.log("\n----------------------------\n");
+            const npm = new Deno.Command("npm", { args });
+            const child = npm.spawn();
+            const status = await child.status;
+            return status.code;
+        } catch (reason) {
+            console.error(reason);
+            return 1;
+        }
+    }
+}
+
+const code = await run();
+
+console.log(""), Deno.exit(code);
