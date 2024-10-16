@@ -1,0 +1,51 @@
+#!/usr/bin/env deno --allow-all
+
+import { Cargo, type CargoSchemaType } from "./cargo.ts";
+import { exec } from "./shell.ts";
+
+console.log("");
+console.log(`DENO: ${JSON.stringify(Deno.version)}`);
+
+const workspace = Deno.args.length > 0 ? Deno.args[0] : Deno.cwd();
+
+function read(cargo: string) {
+    try {
+        const data = Deno.readFileSync(cargo);
+        return new TextDecoder("utf-8").decode(data);
+    } catch (reason) {
+        console.warn(`failed to read ${cargo}, reason = ${reason}`);
+        return null;
+    }
+}
+
+function decode(cargo: string, content: string): CargoSchemaType | null {
+    try {
+        return Cargo.parse(content);
+    } catch (reason) {
+        console.warn(`failed to decode ${cargo}, reason = ${reason}`);
+    }
+    return null;
+}
+
+async function run() {
+    try {
+        const tomls = await exec("fd", "Cargo.toml$", workspace).then((
+            output,
+        ) => output.split("\n").filter((x) => x !== ""));
+        tomls.forEach((cargo) => console.log(`found => ${cargo}`));
+        const cargos = tomls.map((toml) => {
+            const content = read(toml);
+            if (content === null) return null;
+            return decode(toml, content);
+        }).filter((x) => !!x);
+        cargos.forEach((cargo) => console.log(`${!!cargo.workspace}`));
+    } catch (reason) {
+        console.error(reason);
+        return 1;
+    }
+    return 0;
+}
+
+const code = await run();
+
+console.log(""), Deno.exit(code);
